@@ -96,11 +96,11 @@ class GithubBot:
 	def __init__(self):
 		self.config = Config()
 		self.bot = aiotg.Bot(api_token=self.config.token)
-		self.bot.add_command(r"^/start$", self.handle_start)
-		self.bot.add_command(r"^/status$", self.handle_status)
-		self.bot.add_command(r"^/guide$", self.handle_guide)
-		self.bot.add_command(r"^/register$", self.handle_register)
-		self.bot.add_command(r"^/unregister$", self.handle_unregister)
+		self.bot.add_command(r"^/start", self.handle_start)
+		self.bot.add_command(r"^/status", self.handle_status)
+		self.bot.add_command(r"^/guide", self.handle_guide)
+		self.bot.add_command(r"^/register", self.handle_register)
+		self.bot.add_command(r"^/unregister", self.handle_unregister)
 		self.app = aiohttp.web.Application()
 		self.app.router.add_post("/{uuid}", self.handle_webhook)
 	
