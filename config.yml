@@ -1,0 +1,4 @@
+github-bot:
+  baseurl: https://example.com/{uuid}
+  token: 012345678:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi
+  chats: {}
