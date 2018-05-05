@@ -48,49 +48,50 @@ class Config:
 class Repository:
 	def __init__(self, json):
 		self.name = json.get("repository", {}).get("full_name", "<Unknown>").replace("[", "(").replace("]", ")")
-		self.url = json.get("repository", {}).get("url", "https://github.com/404").replace("(", "%28").replace(")", "%29")
-	
-	@property
-	def message(self):
-		return "Repository: [{}]({})".format(self.name, self.url)
+		self.url = json.get("repository", {}).get("html_url", "https://github.com/404").replace("(", "%28").replace(")", "%29")
 
 class Branch:
 	def __init__(self, json):
 		self.branch = json.get("ref", "<Unknown>").replace("refs/heads/", "")
-	
-	@property
-	def message(self):
-		return "Branch: {}".format(self.branch)
 
 class Commit:
 	def __init__(self, json_subset):
 		self.description = json_subset.get("message", "<Unknown>")
 		self.url = json_subset.get("url", "https://github.com/404")
 		self.committer = json_subset.get("committer", {}).get("name", "<Unknown>")
-	
-	@property
-	def message(self):
-		return "- [{}]({}) (by {})".format(self.description, self.url, self.committer)
 
 class Commits:
 	def __init__(self, json):
 		self.commits = []
 		for commit in json.get("commits", []):
 			self.commits.append(Commit(commit))
-	
-	@property
-	def message(self):
-		return "\n".join([ commit.message for commit in self.commits ])
+
+class Zen:
+	def __init__(self, json):
+		self.zen = json.get("zen", "<Unknown>")
 
 class PushEvent:
 	def __init__(self, json):
-		self.repository = Repository(json).message
-		self.branch = Branch(json).message
-		self.commits = Commits(json).message
+		self.repository = Repository(json)
+		self.branch = Branch(json)
+		self.commits = Commits(json)
 	
 	@property
 	def message(self):
-		return "{}\n{}\n\n{}".format(self.repository, self.branch, self.commits)
+		repository = "*Repository:* [{}]({})".format(self.repository.name.replace("*", ""), self.repository.url.replace("*", ""))
+		branch = "*Branch:* {}".format(self.branch.branch.replace("*", ""))
+		commits = "\n".join([ "- [{}]({}) (by {})".format(commit.description, commit.url, commit.committer) for commit in self.commits.commits ])
+		return "{}\n{}\n\n{}".format(repository, branch, commits)
+
+class PingEvent:
+	def __init__(self, json):
+		self.repository = Repository(json)
+		self.zen = Zen(json)
+	
+	@property
+	def message(self):
+		repository = "[{}]({})".format(self.repository.name.replace("*", ""), self.repository.url.replace("*", ""))
+		return "GitHub just sent me a *ping event* to notice you that your webhook at {} has been created! 💪\nThey also told me: {} 😉".format(repository, self.zen.zen)
 
 class GithubBot:
 	def __init__(self):
@@ -150,12 +151,22 @@ class GithubBot:
 			json = await request.json()
 		except:
 			return aiohttp.web.Response(status=400)
-		push_event = PushEvent(json)
-		try:
-			chat = aiotg.Chat(bot=self.bot, chat_id=int(self.config.get_chat_by_uuid(uuid)["id"]))
-		except AttributeError:
-			return aiohttp.web.Response(status=404)
-		await chat.send_text(push_event.message, parse_mode="Markdown")
-		return aiohttp.web.json_response({ "ok": True })
+		if request.headers["X-GitHub-Event"] == "push":
+			push_event = PushEvent(json)
+			try:
+				chat = aiotg.Chat(bot=self.bot, chat_id=int(self.config.get_chat_by_uuid(uuid)["id"]))
+			except AttributeError:
+				return aiohttp.web.Response(status=404)
+			await chat.send_text(push_event.message, parse_mode="Markdown")
+			return aiohttp.web.json_response({ "ok": True })
+		elif request.headers["X-GitHub-Event"] == "ping":
+			ping_event = PingEvent(json)
+			try:
+				chat = aiotg.Chat(bot=self.bot, chat_id=int(self.config.get_chat_by_uuid(uuid)["id"]))
+			except AttributeError:
+				return aiohttp.web.Response(status=404)
+			await chat.send_text(ping_event.message, parse_mode="Markdown")
+			return aiohttp.web.json_response({ "ok": True })
+		return aiohttp.web.Response(status=404)
 
 GithubBot().run()
