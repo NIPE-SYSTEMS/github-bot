@@ -155,7 +155,7 @@ class GithubBot:
 			push_event = PushEvent(json)
 			try:
 				chat = aiotg.Chat(bot=self.bot, chat_id=int(self.config.get_chat_by_uuid(uuid)["id"]))
-			except AttributeError:
+			except TypeError:
 				return aiohttp.web.Response(status=404)
 			await chat.send_text(push_event.message, parse_mode="Markdown")
 			return aiohttp.web.json_response({ "ok": True })
@@ -163,7 +163,7 @@ class GithubBot:
 			ping_event = PingEvent(json)
 			try:
 				chat = aiotg.Chat(bot=self.bot, chat_id=int(self.config.get_chat_by_uuid(uuid)["id"]))
-			except AttributeError:
+			except TypeError:
 				return aiohttp.web.Response(status=404)
 			await chat.send_text(ping_event.message, parse_mode="Markdown")
 			return aiohttp.web.json_response({ "ok": True })
